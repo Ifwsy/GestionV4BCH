@@ -57,6 +57,32 @@ const OrderForm: React.FC<OrderFormProps> = ({ isOpen, onClose, onSave, lastOrde
     if (isOpen) {
       loadSuppliers();
       loadProducts();
+      // Reset form when opening
+      setFormData({
+        orderNumber: generateOrderNumber(),
+        supplier: '',
+        status: 'pending',
+        items: [],
+        total: 0,
+        createdAt: new Date().toISOString(),
+        estimatedDelivery: '',
+        deliveryAddress: 'Av. Camilo Henríquez 3692',
+        paymentMethod: '',
+        notes: '',
+        statusHistory: [
+          {
+            status: 'pending',
+            timestamp: new Date().toISOString(),
+          },
+        ],
+      });
+      setSupplierSearch('');
+      setProductSearch('');
+      setNewItem({
+        name: '',
+        quantity: 1,
+        price: 0,
+      });
     }
   }, [isOpen]);
 
@@ -104,9 +130,15 @@ const OrderForm: React.FC<OrderFormProps> = ({ isOpen, onClose, onSave, lastOrde
   );
 
   const handleSupplierSelect = (supplierName: string) => {
-    setFormData({ ...formData, supplier: supplierName });
+    setFormData(prev => ({ ...prev, supplier: supplierName }));
     setSupplierSearch(supplierName);
     setShowSupplierDropdown(false);
+  };
+
+  const handleSupplierInputChange = (value: string) => {
+    setSupplierSearch(value);
+    setFormData(prev => ({ ...prev, supplier: value }));
+    setShowSupplierDropdown(true);
   };
 
   const handleProductSelect = (product: Product) => {
@@ -117,6 +149,14 @@ const OrderForm: React.FC<OrderFormProps> = ({ isOpen, onClose, onSave, lastOrde
     });
     setProductSearch(product.name);
     setShowProductDropdown(false);
+  };
+
+  const handleProductInputChange = (value: string) => {
+    setProductSearch(value);
+    setNewItem(prev => ({ ...prev, name: value }));
+    if (formData.supplier) {
+      setShowProductDropdown(true);
+    }
   };
 
   const addItem = () => {
@@ -166,6 +206,24 @@ const OrderForm: React.FC<OrderFormProps> = ({ isOpen, onClose, onSave, lastOrde
     onClose();
   };
 
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.supplier-dropdown-container')) {
+        setShowSupplierDropdown(false);
+      }
+      if (!target.closest('.product-dropdown-container')) {
+        setShowProductDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   if (!isOpen) return null;
 
   return (
@@ -182,18 +240,14 @@ const OrderForm: React.FC<OrderFormProps> = ({ isOpen, onClose, onSave, lastOrde
           {/* Información básica */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Proveedor con dropdown */}
-            <div className="relative">
+            <div className="relative supplier-dropdown-container">
               <label className="block text-sm font-medium text-gray-700 mb-1">Proveedor *</label>
               <div className="relative">
                 <input
                   type="text"
                   required
                   value={supplierSearch}
-                  onChange={(e) => {
-                    setSupplierSearch(e.target.value);
-                    setFormData({ ...formData, supplier: e.target.value });
-                    setShowSupplierDropdown(true);
-                  }}
+                  onChange={(e) => handleSupplierInputChange(e.target.value)}
                   onFocus={() => setShowSupplierDropdown(true)}
                   placeholder="Buscar proveedor..."
                   className="w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 pr-10"
@@ -302,18 +356,14 @@ const OrderForm: React.FC<OrderFormProps> = ({ isOpen, onClose, onSave, lastOrde
             
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
               {/* Nombre del insumo con dropdown filtrado por proveedor */}
-              <div className="md:col-span-2 relative">
+              <div className="md:col-span-2 relative product-dropdown-container">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Nombre del insumo</label>
                 <div className="relative">
                   <input
                     type="text"
                     placeholder={formData.supplier ? "Buscar insumo del proveedor..." : "Seleccione un proveedor primero"}
                     value={productSearch}
-                    onChange={(e) => {
-                      setProductSearch(e.target.value);
-                      setNewItem({ ...newItem, name: e.target.value });
-                      setShowProductDropdown(true);
-                    }}
+                    onChange={(e) => handleProductInputChange(e.target.value)}
                     onFocus={() => formData.supplier && setShowProductDropdown(true)}
                     disabled={!formData.supplier}
                     className="w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 pr-10 disabled:bg-gray-100 disabled:cursor-not-allowed"
