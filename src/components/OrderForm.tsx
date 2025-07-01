@@ -23,12 +23,16 @@ const OrderForm: React.FC<OrderFormProps> = ({ isOpen, onClose, onSave, lastOrde
 
   const generateOrderNumber = () => {
     if (!lastOrderNumber) return 'ORD-001';
-    const currentNumber = parseInt(lastOrderNumber.split('-')[1]);
-    return `ORD-${String(currentNumber + 1).padStart(3, '0')}`;
+    try {
+      const currentNumber = parseInt(lastOrderNumber.split('-')[1]);
+      return `ORD-${String(currentNumber + 1).padStart(3, '0')}`;
+    } catch (error) {
+      return 'ORD-001';
+    }
   };
 
   const [formData, setFormData] = useState<Partial<Order>>({
-    orderNumber: generateOrderNumber(),
+    orderNumber: 'ORD-001',
     supplier: '',
     status: 'pending',
     items: [],
@@ -52,13 +56,24 @@ const OrderForm: React.FC<OrderFormProps> = ({ isOpen, onClose, onSave, lastOrde
     price: 0,
   });
 
+  // Actualizar número de orden cuando cambie lastOrderNumber
+  useEffect(() => {
+    if (isOpen) {
+      setFormData(prev => ({
+        ...prev,
+        orderNumber: generateOrderNumber()
+      }));
+    }
+  }, [lastOrderNumber, isOpen]);
+
   // Cargar proveedores y productos al abrir el modal
   useEffect(() => {
     if (isOpen) {
       loadSuppliers();
       loadProducts();
       // Reset form when opening
-      setFormData({
+      setFormData(prev => ({
+        ...prev,
         orderNumber: generateOrderNumber(),
         supplier: '',
         status: 'pending',
@@ -75,7 +90,7 @@ const OrderForm: React.FC<OrderFormProps> = ({ isOpen, onClose, onSave, lastOrde
             timestamp: new Date().toISOString(),
           },
         ],
-      });
+      }));
       setSupplierSearch('');
       setProductSearch('');
       setNewItem({
@@ -218,11 +233,13 @@ const OrderForm: React.FC<OrderFormProps> = ({ isOpen, onClose, onSave, lastOrde
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
